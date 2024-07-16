@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+char *ltrim(char *buf, size_t n) {
+  for (size_t i = 0; i < n && isspace(*buf); ++i)
+    ++buf;
+  return buf;
+}
+
 int main() {
   // stores user input
   char *line_h = NULL;
@@ -26,8 +32,11 @@ int main() {
       return -1;
     }
 
+    // trim input
+    char *trimmed_line = ltrim(line_h, len);
+
     // mirror the input
-    printf("%s", line_h);
+    printf("%s", trimmed_line);
   }
   free(line_h);
   return 0;
