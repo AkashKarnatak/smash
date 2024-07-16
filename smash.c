@@ -4,9 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *ltrim(char *buf, size_t n) {
-  for (size_t i = 0; i < n && isspace(*buf); ++i)
+char *trim(char *buf, ssize_t *n) {
+  size_t len = *n;
+  for (size_t i = 0; i < len && isspace(*buf); ++i, --*n)
     ++buf;
+  for (; *n > 0 && isspace(*(buf + *n - 1)); --*n)
+    ;
   return buf;
 }
 
@@ -33,7 +36,13 @@ int main() {
     }
 
     // trim input
-    char *trimmed_line = ltrim(line_h, len);
+    char *trimmed_line = trim(line_h, &len);
+
+    if (strncmp(trimmed_line, "exit", 4) == 0) {
+      printf("Exiting...\n");
+      free(line_h);
+      return 0;
+    }
 
     // mirror the input
     printf("%s", trimmed_line);
