@@ -8,8 +8,8 @@ char *trim(char *buf, ssize_t *n) {
   size_t len = *n;
   for (size_t i = 0; i < len && isspace(*buf); ++i, --*n)
     ++buf;
-  for (; *n > 0 && isspace(*(buf + *n - 1)); --*n)
-    ;
+  for (; *n > 0 && isspace(buf[*n - 1]); --*n)
+    buf[*n-1] = '\0';
   return buf;
 }
 
