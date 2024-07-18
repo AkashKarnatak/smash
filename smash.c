@@ -11,14 +11,13 @@ char *trim(char *buf, ssize_t *n) {
   for (size_t i = 0; i < len && isspace(*buf); ++i, --*n)
     ++buf;
   for (; *n > 0 && isspace(buf[*n - 1]); --*n)
-    buf[*n-1] = '\0';
+    buf[*n - 1] = '\0';
   return buf;
 }
 
-char **split(char *buf, size_t n, size_t *len) {
+size_t split(char *buf, size_t n, char ***tokens_h) {
   if (n == 0) {
-    *len = 0;
-    return NULL;
+    return 0;
   }
 
   size_t capacity = 4;
@@ -31,13 +30,13 @@ char **split(char *buf, size_t n, size_t *len) {
     if (!prev_space && curr_space) {
       *buf = '\0';
     } else if (prev_space && !curr_space) {
-      if (size == capacity) {
+      if (size + 1 == capacity) {
         size_t new_capacity = 2 * capacity;
         char **new_args = (char **)realloc(args, new_capacity * sizeof(char *));
         if (!new_args) {
           free(args);
-          *len = 0;
-          return NULL;
+          *tokens_h = NULL;
+          return -1;
         }
 
         capacity = new_capacity;
@@ -48,8 +47,9 @@ char **split(char *buf, size_t n, size_t *len) {
     prev_space = curr_space;
   }
 
-  *len = size;
-  return args;
+  args[size++] = NULL;
+  *tokens_h = args;
+  return size;
 }
 
 int main() {
@@ -60,36 +60,36 @@ int main() {
   // REPL - read, eval, print loop
   for (;;) {
     // prompt string
-    printf("$ ");
+    fprintf(stderr, "$ ");
     // read input from user
     ssize_t len = getline(&line_h, &size, stdin);
 
     if (len == -1 && errno == 0) { // EOF
-      printf("\nexit\n");
+      fprintf(stderr, "\nexit\n");
       free(line_h);
       return 0;
     } else if (len == -1) { // error reading file
-      fprintf(stderr, "Failed to read input\n");
+      perror("smash: getline()");
       free(line_h);
-      return -1;
+      continue;
     }
 
     // trim input
     char *trimmed_line = trim(line_h, &len);
 
     // tokenize string
-    size_t n_tokens = 0;
-    char **tokens_h = split(trimmed_line, len, &n_tokens);
-    char *args[n_tokens + 1];
-    for (size_t i = 0; i < n_tokens; ++i) {
-      args[i] = tokens_h[i];
+    char **tokens_h = NULL;
+    size_t n_tokens = split(trimmed_line, len, &tokens_h);
+    if (n_tokens == -1) {
+      fprintf(stderr, "smash: tokenization failed\n");
+      continue;
     }
-    args[n_tokens] = NULL;
 
-    if (n_tokens == 0) continue;
+    if (n_tokens == 0)
+      continue;
 
-    if (strncmp(args[0], "exit", 4) == 0) {
-      printf("exit\n");
+    if (strncmp(tokens_h[0], "exit", 4) == 0) {
+      fprintf(stderr, "exit\n");
       free(line_h);
       return 0;
     } else {
@@ -109,7 +109,7 @@ int main() {
       }
 
       // child process
-      if (execvp(args[0], args) == -1) {
+      if (execvp(tokens_h[0], tokens_h) == -1) {
         perror("smash: exec() failed");
         exit(1);
       }
